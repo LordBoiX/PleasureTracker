@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pleasure Princess Tracker</title>
+    <style>
+      :root{
+        --bg:#0f172a; /* slate-900 */
+        --panel:#111827; /* gray-900 */
+        --muted:#94a3b8; /* slate-400 */
+        --text:#e5e7eb;  /* gray-200 */
+        --accent:#38bdf8; /* sky-400 */
+        --good:#22c55e; /* green-500 */
+        --warn:#f59e0b; /* amber-500 */
+        --bad:#ef4444; /* red-500 */
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji","Segoe UI Emoji"}
+      .container{max-width:980px;margin:0 auto;padding:20px}
+      header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+      .title{font-weight:700;letter-spacing:.2px}
+      .muted{color:var(--muted)}
+      .panel{background:var(--panel);border:1px solid #1f2937;border-radius:12px;padding:16px}
+      .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:900px){.grid{grid-template-columns:1fr}}
+      button,select,input,textarea{background:#0b1220;border:1px solid #253049;color:var(--text);border-radius:8px;padding:8px 10px}
+      button{background:#0ea5e9;border-color:#0ea5e9;color:#00243b;cursor:pointer}
+      button.ghost{background:transparent;border-color:#253049;color:var(--text)}
+      .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .right{margin-left:auto}
+      .progress{height:10px;background:#0b1220;border:1px solid #253049;border-radius:999px;overflow:hidden}
+      .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#34d399)}
+      .goal{display:flex;gap:12px;align-items:center}
+      .goal h3{margin:0;font-size:15px}
+      .goal small{color:var(--muted)}
+      .badge{padding:2px 8px;border-radius:999px;border:1px solid #233049;color:#8fb3ff;font-size:12px}
+      .danger{color:#ff9b9b;border-color:#3b1f23}
+      .ok{color:#9bffb1;border-color:#1f3b2a}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+      .settings{display:flex;gap:8px;align-items:center}
+      .hint{padding:10px;border:1px dashed #334155;border-radius:10px}
+      .footer{margin-top:18px;color:var(--muted);font-size:12px}
+      .lang{min-width:110px}
+      @media(max-width:600px){
+        .toolbar .lang, .toolbar button, #apiUrlInput{width:100%}
+      }
+      .pill{background:#0b1220;border:1px solid #253049;border-radius:999px;padding:6px 10px}
+      .list{display:flex;flex-direction:column;gap:12px}
+      .kv{display:grid;grid-template-columns:1fr auto;gap:6px}
+      .total{font-size:28px;font-weight:700}
+      a{color:var(--accent)}
+  .chartWrap{position:relative;width:100%;height:220px}
+  @media(max-width:600px){.chartWrap{height:160px}}
+  .chartWrap canvas{width:100% !important;height:100% !important;display:block}
+  details{background:var(--panel);border:1px solid #1f2937;border-radius:10px;padding:8px}
+  summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+  summary::-webkit-details-marker{display:none}
+  .chev{transition:transform .2s ease}
+  details[open] .chev{transform:rotate(90deg)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  .deltaPlus{color:#22c55e}
+  .deltaMinus{color:#ef4444}
+  /* Large mood emoji styling */
+  .moodIcon{font-size:40px;line-height:1;display:inline-block;margin:0 4px;vertical-align:middle;}
+    </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div id="loadingOverlay" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,0.92);z-index:9999;flex-direction:column;gap:14px">
+        <div style="font-size:18px;font-weight:600">Loading…</div>
+        <div style="width:240px" class="progress"><span id="loadingBar" style="width:5%"></span></div>
+        <div class="muted" id="loadingPhase" style="font-size:12px;letter-spacing:.5px">Starting</div>
+      </div>
+      <header>
+        <div class="row">
+          <div class="title">🏁 <span data-i18n="app_title">Pleasure Princess Tracker</span></div>
+          <span class="muted">·</span>
+          <span class="muted" data-i18n="app_tag">Minimal goals + points</span>
+        </div>
+        <div class="toolbar">
+          <select id="lang" class="lang" title="Language"></select>
+          <select id="tz" class="lang" title="Timezone"></select>
+          <button class="ghost" id="openSettings">⚙️ <span data-i18n="settings">Settings</span></button>
+          <button id="refresh">↻ <span data-i18n="refresh">Refresh</span></button>
+        </div>
+      </header>
+
+      <div id="configHint" class="panel hint" style="display:none">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <strong>API URL</strong>
+          <input id="apiUrlInput" placeholder="Paste your Apps Script Web App URL" style="min-width:320px" />
+          <button id="saveApiUrl">Save</button>
+          <span class="muted" data-i18n="config_hint">Set your Google Apps Script Web App URL to load data.</span>
+        </div>
+      </div>
+
+  <section class="panel" id="dailyTasksSection" style="margin-top:10px"></section>
+
+      <div class="grid" id="content" style="display:none">
+        <section class="panel">
+          <div class="row">
+            <div>
+              <div class="muted" data-i18n="total_points">Total Points</div>
+              <div id="total" class="total">0</div>
+            </div>
+            <span class="right"></span>
+            <div class="kv">
+              <span class="muted" data-i18n="last_update">Last update</span>
+              <span id="lastUpdate">—</span>
+            </div>
+          </div>
+          <div style="margin-top:10px; display:flex; flex-direction:column; gap:14px">
+            <div>
+              <div class="muted" style="margin:0 0 4px 0" data-i18n="chart_cumulative">Cumulative points</div>
+              <div class="chartWrap"><canvas id="cumChart"></canvas></div>
+            </div>
+            <div>
+              <div class="muted" style="margin:0 0 4px 0" data-i18n="chart_daily">Points per day</div>
+              <div class="chartWrap"><canvas id="chart"></canvas></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="row">
+            <h2 style="margin:0;font-size:16px" data-i18n="goals">Goals</h2>
+            <span class="badge right" id="goalsCount">0</span>
+          </div>
+          <div class="list" id="goalsList"></div>
+        </section>
+      </div>
+
+  <section class="panel" id="dailyBreakdown" style="display:none; margin-top:16px"></section>
+
+  <div class="footer muted" id="footerNote" data-i18n="footer_note">Data lives in your Google Sheet.</div>
+    </div>
+
+    <script>
+      // --- Simple i18n ---
+      const I18N = {
+        en: {
+          app_title: 'Pleasure Princess Tracker',
+          app_tag: 'Minimal goals + points',
+          settings: 'Settings',
+          refresh: 'Refresh',
+          config_hint: 'Set your Google Apps Script Web App URL to load data.',
+          total_points: 'Total Points',
+          last_update: 'Last update',
+          goals: 'Goals',
+          footer_note: 'Data lives in your Google Sheet.',
+          achieved: 'Achieved',
+          progress: 'Progress',
+          missing_api: 'Missing API URL. Open Settings to configure.',
+          tz_label: 'Timezone',
+          tasks: 'Daily tasks',
+          today: 'Today',
+          statuses: {0:'Failed',1:'Done',2:'Great',3:'Outstanding'}
+          ,chart_cumulative: 'Cumulative points'
+          ,chart_daily: 'Points per day'
+          ,tasks_month: 'Daily tasks (to keep Duolingo)'
+          ,points_per_day_title: 'Points per day'
+          ,month_note: 'Showing current month'
+          ,zero_days_label: '0-days'
+          ,missed_days: 'Missed days:'
+          ,outstanding_tasks: 'Outstanding tasks'
+          ,due: 'Due'
+          ,due_today: 'Today'
+          ,overdue: 'Overdue'
+          ,days_left: 'days left'
+          ,completed: 'Completed'
+        },
+        de: {
+          app_title: 'Pleasure Princess Tracker',
+          app_tag: 'Minimalistische Ziele + Punkte',
+          settings: 'Einstellungen',
+          refresh: 'Aktualisieren',
+          config_hint: 'Hinterlege die Google Apps Script Web-App-URL, um Daten zu laden.',
+          total_points: 'Gesamtpunkte',
+          last_update: 'Zuletzt aktualisiert',
+          goals: 'Ziele',
+          footer_note: 'Daten liegen in deinem Google Sheet.',
+          achieved: 'Erreicht',
+          progress: 'Fortschritt',
+          missing_api: 'API-URL fehlt. Öffne Einstellungen zur Konfiguration.',
+          tz_label: 'Zeitzone',
+          tasks: 'Tägliche Aufgaben',
+          today: 'Heute',
+          statuses: {0:'Fehlgeschlagen',1:'Erledigt',2:'Großartig',3:'Hervorragend'}
+          ,chart_cumulative: 'Kumulative Punkte'
+          ,chart_daily: 'Punkte pro Tag'
+          ,tasks_month: 'Tägliche Aufgaben (für Duolingo)'
+          ,points_per_day_title: 'Punkte pro Tag'
+          ,month_note: 'Aktueller Monat'
+          ,zero_days_label: '0-Tage'
+          ,missed_days: 'Verpasste Tage:'
+          ,outstanding_tasks: 'Offene Aufgaben'
+          ,due: 'Fällig'
+          ,due_today: 'Heute'
+          ,overdue: 'Überfällig'
+          ,days_left: 'Tage übrig'
+          ,completed: 'Erledigt'
+        },
+        ru: {
+          app_title: 'Pleasure Princess Tracker',
+          app_tag: 'Минимальные цели и очки',
+          settings: 'Настройки',
+          refresh: 'Обновить',
+          config_hint: 'Укажите URL веб‑приложения Apps Script, чтобы загрузить данные.',
+          total_points: 'Всего очков',
+          last_update: 'Последнее обновление',
+          goals: 'Цели',
+          footer_note: 'Данные хранятся в вашей Google Таблице.',
+          achieved: 'Достигнуто',
+          progress: 'Прогресс',
+          missing_api: 'Не указан URL API. Откройте настройки для конфигурации.',
+          tz_label: 'Часовой пояс',
+          tasks: 'Ежедневные задачи',
+          today: 'Сегодня',
+          statuses: {0:'Провал',1:'Сделано',2:'Отлично',3:'Превосходно'}
+          ,chart_cumulative: 'Накопленные очки'
+          ,chart_daily: 'Очки в день'
+          ,tasks_month: 'Ежедневные задачи (для Duolingo)'
+          ,points_per_day_title: 'Очки в день'
+          ,month_note: 'Текущий месяц'
+          ,zero_days_label: '0-дней'
+          ,missed_days: 'Пропущенные дни:'
+          ,outstanding_tasks: 'Текущие задачи'
+          ,due: 'Срок'
+          ,due_today: 'Сегодня'
+          ,overdue: 'Просрочено'
+          ,days_left: 'дн. осталось'
+          ,completed: 'Готово'
+        }
+      };
+
+      const $ = sel => document.querySelector(sel);
+      const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwp7MrqQU3dUFDvJd107Hsh9cU1ySQexmuDpYMePr4bkUUa7aBdU2RPvWpn7t2YFOiv/exec'; // TODO: set to your Apps Script URL
+      const storage = {
+        get api(){
+          const qs = new URLSearchParams(location.search);
+          const fromQs = qs.get('api');
+          if(fromQs) return fromQs;
+      const saved = localStorage.getItem('apiBaseUrl');
+      if(saved) return saved;
+      // Only use DEFAULT_API when it's not the placeholder
+      return (DEFAULT_API && !/REPLACE_WITH_YOUR_DEPLOYMENT/.test(DEFAULT_API)) ? DEFAULT_API : ''
+        },
+        set api(v){ localStorage.setItem('apiBaseUrl', v || '') },
+  get lang(){ return localStorage.getItem('lang') || 'ru' },
+        set lang(v){ localStorage.setItem('lang', v) },
+        get tz(){ return localStorage.getItem('tz') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' },
+        set tz(v){ localStorage.setItem('tz', v) }
+      };
+
+      function setLang(lang){
+        storage.lang = I18N[lang] ? lang : 'en';
+        applyI18n();
+      }
+      function applyI18n(){
+        const dict = I18N[storage.lang] || I18N.en;
+        try{ document.documentElement.setAttribute('lang', storage.lang); }catch(_){ }
+        $$('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (dict[key]) el.textContent = dict[key];
+        });
+        const sel = $('#lang');
+        if (sel.childElementCount === 0){
+          Object.keys(I18N).forEach(k => {
+            const opt = document.createElement('option');
+            const labels = {en:'English', de:'Deutsch', ru:'Русский'};
+            opt.value = k; opt.textContent = labels[k] || k.toUpperCase();
+            sel.appendChild(opt);
+          });
+        }
+        sel.value = storage.lang;
+      }
+
+      function populateTimezones(){
+        const tzSel = $('#tz');
+        if(tzSel.childElementCount>0) return;
+        let zones = [];
+        try{ zones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : []; }catch(_){ zones = []; }
+        if(zones.length === 0){ zones = [storage.tz]; }
+        zones.forEach(z => {
+          const opt = document.createElement('option');
+          opt.value = z; opt.textContent = z;
+          tzSel.appendChild(opt);
+        });
+        tzSel.value = storage.tz;
+      }
+      async function apiGet(action){
+        if(!storage.api) throw new Error(I18N[storage.lang]?.missing_api || 'Missing API URL');
+        const url = storage.api + (storage.api.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action);
+        const res = await fetch(url, { method:'GET' });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }
+
+  let chart; let cumChart;
+      function dateKeyInTZ(ts, tz){
+        const d = new Date(ts);
+        const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' });
+        return fmt.format(d); // YYYY-MM-DD
+      }
+      function formatDateLabel(isoDate, tz, locale){
+        const [y,m,d] = isoDate.split('-').map(Number);
+        // Construct as UTC to avoid local shifting; format with tz
+        const dt = new Date(Date.UTC(y, (m-1), d, 12, 0, 0));
+        return new Intl.DateTimeFormat(locale || 'en', { timeZone: tz, month:'short', day:'2-digit' }).format(dt);
+      }
+      function buildDaily(points, tz){
+        if(points.length===0) return { labels:[], values:[] };
+        const map = new Map();
+        for(const p of points){
+          const key = dateKeyInTZ(p.timestamp, tz);
+          map.set(key, (map.get(key)||0) + Number(p.delta||0));
+        }
+        // Ensure no gaps between first and last day
+        const keys = Array.from(map.keys()).sort();
+        const start = new Date(keys[0]+"T00:00:00Z");
+        const end = new Date(keys[keys.length-1]+"T00:00:00Z");
+        const labels = [];
+        for(let d = start; d <= end; d = new Date(d.getTime()+86400000)){
+          const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
+          labels.push(iso);
+          if(!map.has(iso)) map.set(iso, 0);
+        }
+        const values = labels.map(k => map.get(k)||0);
+        return { labels, values };
+      }
+      function trendline(values){
+        const n = values.length; if(n===0) return [];
+        const xs = values.map((_,i)=>i);
+        const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+        const xbar = mean(xs); const ybar = mean(values);
+        let num=0, den=0; for(let i=0;i<n;i++){ num += (xs[i]-xbar)*(values[i]-ybar); den += (xs[i]-xbar)*(xs[i]-xbar); }
+        const m = den ? num/den : 0; const b = ybar - m*xbar;
+        return xs.map(x => m*x + b);
+      }
+      function renderChart(points){
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        const { labels, values } = buildDaily(points, tz);
+        const tr = trendline(values);
+  const ctx = document.getElementById('chart');
+  if(chart){ chart.destroy(); }
+  chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { type:'bar', label:'Points/day', data: values, backgroundColor:'rgba(56,189,248,0.35)', borderColor:'#38bdf8' },
+              { type:'line', label:'Trend', data: tr, borderColor:'#34d399', borderWidth:2, pointRadius:0, tension:0.2, fill:false }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 200 },
+            resizeDelay: 50,
+            scales: {
+              x: {
+                ticks: { color:'#94a3b8', callback: (v, i) => formatDateLabel(labels[i], tz, locale) },
+                grid: { color:'#1f2937' }
+              },
+              y: { ticks: { color:'#94a3b8' }, grid: { color:'#1f2937' } }
+            },
+            plugins: { legend: { labels: { color:'#94a3b8' } } }
+          }
+        });
+      }
+
+      function renderCumulative(points){
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        const sorted = points.slice().sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+        let acc = 0;
+        const labels = sorted.map(p => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date(p.timestamp)));
+        const values = sorted.map(p => (acc += Number(p.delta||0)));
+        const ctx = document.getElementById('cumChart');
+        if(cumChart){ cumChart.destroy(); }
+        cumChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Total',
+              data: values,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139,92,246,0.2)',
+              fill: true,
+              tension: 0.25,
+              pointRadius: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 200 },
+            resizeDelay: 50,
+            scales: {
+              x: {
+                ticks: { color:'#94a3b8', callback: (v,i)=> formatDateLabel(labels[i], tz, locale) },
+                grid: { color:'#1f2937' }
+              },
+              y: { ticks: { color:'#94a3b8' }, grid: { color:'#1f2937' } }
+            },
+            plugins: { legend: { labels: { color:'#94a3b8' } } }
+          }
+        });
+      }
+
+      function num(n){ return (Number(n)||0).toLocaleString(undefined); }
+
+      function renderGoals(goals, total){
+        const list = $('#goalsList');
+        list.innerHTML = '';
+        $('#goalsCount').textContent = goals.length;
+        goals
+          .slice()
+          .sort((a,b)=> Number(a.targetPoints)-Number(b.targetPoints))
+          .forEach(g => {
+            const target = Number(g.targetPoints)||0;
+            const pct = target ? Math.max(0, Math.min(100, Math.round(100* (total/target)))) : 0;
+            const achieved = total >= target && target>0;
+            const row = document.createElement('div');
+            row.className = 'goal';
+            row.innerHTML = `
+              <div style="flex:1;min-width:220px">
+                <h3>${g.title || 'Goal'}</h3>
+                <small class="muted">${g.description || ''}</small>
+                <div class="progress" style="margin-top:8px"><span style="width:${pct}%"></span></div>
+                <div class="row" style="margin-top:6px">
+                  <span class="muted" data-i18n="progress">${I18N[storage.lang]?.progress || 'Progress'}</span>
+                  <span class="badge">${num(Math.min(total, target))} / ${num(target)}</span>
+                  <span class="right badge ${achieved?'ok':'danger'}">${achieved ? (I18N[storage.lang]?.achieved||'Achieved') : (100-pct)+'%'}</span>
+                </div>
+              </div>
+            `;
+            list.appendChild(row);
+          });
+      }
+
+      function renderOutstanding(tasks){
+        // Unified outstanding renderer (normalizes dates, handles completed & badges)
+        let panel = document.getElementById('outstandingPanel');
+        if(!panel){
+          panel = document.createElement('section');
+          panel.className = 'panel';
+          panel.id = 'outstandingPanel';
+          const ref = document.getElementById('content');
+          ref.parentNode.insertBefore(panel, ref); // before main grid
+        }
+        const dict = I18N[storage.lang] || I18N.en;
+        const now = new Date();
+        const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: storage.tz, year:'numeric', month:'2-digit', day:'2-digit'}).format(now);
+        const norm = (v)=>{
+          if(!v) return '';
+            if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v)) return v;
+            const d = new Date(v);
+            if(!isNaN(d.getTime())){
+              return new Intl.DateTimeFormat('en-CA', { timeZone: storage.tz, year:'numeric', month:'2-digit', day:'2-digit'}).format(d);
+            }
+            return '';
+        };
+        // Normalize all dueDates in-place (does not mutate original array objects from backend beyond dueDate)
+        (tasks||[]).forEach(t => { t.dueDate = norm(t.dueDate); });
+        const rows = (tasks||[]).slice().sort((a,b)=>{
+          // Incomplete first
+          if((a.completed?1:0)!==(b.completed?1:0)) return (a.completed?1:0)-(b.completed?1:0);
+          if(!a.dueDate && !b.dueDate) return a.title.localeCompare(b.title);
+          if(!a.dueDate) return 1;
+          if(!b.dueDate) return -1;
+          return a.dueDate.localeCompare(b.dueDate);
+        }).map(t => {
+          const due = t.dueDate || '';
+          let badge = '';
+          if(due){
+            if(due === todayKey){
+              badge = `<span class="badge" style="background:#1e293b;color:#fbbf24;border-color:#334155">${dict.due_today||'Today'}</span>`;
+            } else if(due < todayKey){
+              badge = `<span class="badge danger" style="border-color:#3b1f23">${dict.overdue||'Overdue'}</span>`;
+            } else {
+              try {
+                const [y,m,d] = due.split('-').map(Number);
+                if(!isNaN(y) && !isNaN(m) && !isNaN(d)){
+                  const dueDate = new Date(Date.UTC(y, m-1, d, 12));
+                  const daysRaw = (dueDate - now)/86400000;
+                  const daysLeft = Math.max(0, Math.ceil(daysRaw));
+                  badge = `<span class=\"badge\" style=\"background:#1e293b;border-color:#334155\">${daysLeft} ${(dict.days_left||'days left')}</span>`;
+                }
+              }catch(_){ badge=''; }
+            }
+          }
+          const desc = (t.description||'').replace(/</g,'&lt;');
+          const completed = !!t.completed;
+          const titleStyle = completed ? 'text-decoration:line-through;color:#9ca3af' : '';
+          const compBadge = completed ? `<span class=\"badge ok\" style=\"margin-left:6px; background:#064e3b;color:#a7f3d0;border-color:#065f46\">${dict.completed||'Completed'} ✨</span>` : '';
+          return `<div class=\"goal\" style=\"align-items:flex-start\">
+            <div style=\"flex:1;min-width:220px\">
+              <h3 style=\"margin:0 0 4px 0;font-size:15px;${titleStyle}\">${t.title || '—'} ${badge} ${compBadge}</h3>
+              <small class=\"muted\">${desc}</small>
+              ${due?`<div class=\"muted\" style=\"margin-top:4px;font-size:12px\">${dict.due||'Due'}: ${due}</div>`:''}
+            </div>
+          </div>`;
+        }).join('');
+        panel.innerHTML = `
+          <div class="row"><h2 style="margin:0;font-size:16px">${dict.outstanding_tasks||'Outstanding tasks'}</h2><span class="badge right">${tasks?tasks.length:0}</span></div>
+          <div class="list" style="margin-top:8px">${rows || '<span class="muted">—</span>'}</div>
+        `;
+      }
+
+      function renderDailyTasks(tasks){
+        // Create or reuse a panel
+        let sect = document.getElementById('dailyTasksSection');
+        if(!sect){
+          sect = document.createElement('section');
+          sect.className = 'panel';
+          sect.id = 'dailyTasksSection';
+          const grid = document.getElementById('content');
+          grid.parentNode.insertBefore(sect, grid);
+        }
+        const dict = I18N[storage.lang] || I18N.en;
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        // Normalize incoming dates (string or Date-like) to YYYY-MM-DD in selected timezone
+        const normalize = (s, tz)=>{
+          if(!s) return '';
+          const str = String(s).trim();
+          const m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+          if(m){
+            const y=m[1], mo=m[2].padStart(2,'0'), d=m[3].padStart(2,'0');
+            return `${y}-${mo}-${d}`;
+          }
+          const d = new Date(str);
+          if(!isNaN(d.getTime())){
+            try{
+              return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
+            }catch(_){ /* fallthrough */ }
+          }
+          return str; // last resort
+        };
+        const byDate = new Map();
+        (tasks||[]).forEach(t => {
+          const key = normalize(t.date, tz);
+          byDate.set(key, Number(t.value||0));
+        });
+        // Build list of days for the current month up to today in selected timezone
+        const days = [];
+        const now = new Date();
+        const fmtTZ = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' });
+  const [yStr,mStr,dStr] = fmtTZ.format(now).split('-');
+  const y = Number(yStr), m = Number(mStr), dNow = Number(dStr);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  for(let d=1; d<=daysInMonth; d++){
+          const dt = new Date(Date.UTC(y, m-1, d, 12));
+          const iso = fmtTZ.format(dt);
+          const v = byDate.get(iso);
+          days.push({ iso, v });
+        }
+  // Missed-days counter for the current month (value == 0 only)
+  const MISSES_LIMIT = 6;
+        // Debug logging
+        try{
+          console.groupCollapsed && console.groupCollapsed('DailyTasks debug');
+          console.log('tz=', tz, 'locale=', locale);
+          console.log('raw tasks=', tasks);
+          console.log('normalized map keys=', Array.from(byDate.keys()));
+          console.log('window days=', days.map(d=>d.iso));
+          const matched = days.filter(d => byDate.has(d.iso)).map(d=>d.iso);
+          console.log('matched days=', matched);
+          console.log('render pairs=', days.map(d=>({iso:d.iso, v: byDate.get(d.iso)})));
+          console.groupEnd && console.groupEnd();
+        }catch(_){ /* ignore */ }
+        const icon = (v)=>{
+          if(v===1) return '✅';
+          if(v===2) return '⭐';
+          if(v===3) return '✨';
+          if(v===0) return '❌';
+          return '·';
+        };
+        const fmtLabel = (iso)=>{
+          try{
+            const parts = String(iso).split('-');
+            if(parts.length===3){
+              const [y,m,d] = parts.map(Number);
+              const dt = new Date(Date.UTC(y, (m-1), d, 12));
+              if(!isNaN(dt.getTime())){
+                return new Intl.DateTimeFormat(locale, { timeZone: tz, weekday:'short', month:'short', day:'2-digit' }).format(dt);
+              }
+            }
+          }catch(_){ /* ignore */ }
+          return iso; // fallback
+        };
+  const zeroDays = days.filter(d => byDate.get(d.iso) === 0).length;
+    const mood = (z)=>{
+      if(z<=0) return '😇';      // 0 misses: angel
+      if(z===1) return '😊';     // 1 miss: happy
+      if(z===2) return '🙂';     // 2 misses: neutral
+      if(z===3) return '🙁';     // 3 misses: slightly sad
+      if(z===4) return '😟';     // 4 misses: worried
+      if(z===5) return '😫';     // 5 misses: exhausted
+      if(z===6) return '😢';     // 6 misses: crying
+      if(z===7) return '😭';     // 7 misses: crying a lot
+      return '💀';               // 8+ misses: dead
+    };
+    const anyMatch = days.some(d => byDate.has(d.iso));
+    if(!anyMatch && byDate.size>0){
+          const latest = Array.from(byDate.keys()).sort().slice(-14);
+          sect.innerHTML = `
+            <div class="row">
+              <h2 style="margin:0;font-size:16px">${dict.tasks_month || dict.tasks}</h2>
+              <span class="muted right" style="font-size:12px" title="${dict.missed_days||'Missed days:'}">${dict.missed_days||'Missed days:'} ${zeroDays} <span class="moodIcon" role="img" aria-label="mood">${mood(zeroDays)}</span>/${MISSES_LIMIT}</span>
+            </div>
+            <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:8px">
+      ${latest.map(k => `<span class="pill" title="${fmtLabel(k)}${byDate.get(k) !== undefined ? ' — ' + (tasks.find(t=>normalize(t.date, tz)===k)?.description||'') : ''}">${icon(byDate.get(k))}</span>`).join('')}
+            </div>
+          `;
+        } else {
+          sect.innerHTML = `
+            <div class="row">
+              <h2 style="margin:0;font-size:16px">${dict.tasks_month || dict.tasks}</h2>
+              <span class="muted right" style="font-size:12px" title="${dict.missed_days||'Missed days:'}">${dict.missed_days||'Missed days:'} ${zeroDays} <span class="moodIcon" role="img" aria-label="mood">${mood(zeroDays)}</span>/${MISSES_LIMIT}</span>
+            </div>
+    <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:8px">
+  ${days.map(d => `<span class="pill" title="${fmtLabel(d.iso)}${d.v !== undefined ? ' — ' + (tasks.find(t=>normalize(t.date, tz)===d.iso)?.description||'') : ''}">${icon(d.v)}</span>`).join('')}
+    </div>
+    <div class="muted" style="margin-top:6px;font-size:12px">${dict.month_note || ''}</div>
+          `;
+        }
+      }
+
+      function groupPointsByDay(points, tz){
+        const map = new Map();
+        for(const p of points){
+          const k = dateKeyInTZ(p.timestamp, tz);
+          if(!map.has(k)) map.set(k, []);
+          map.get(k).push(p);
+        }
+        // sort each day by time ascending
+        for(const arr of map.values()) arr.sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+        return map;
+      }
+
+      function renderDailyBreakdown(points){
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        const container = document.getElementById('dailyBreakdown');
+        const map = groupPointsByDay(points, tz);
+        if(map.size === 0){ container.style.display='none'; return; }
+  const days = Array.from(map.keys()).sort().reverse();
+  const limit = days.slice(0, 14);
+  const dict = I18N[storage.lang] || I18N.en;
+  const html = [`<div class="row"><h2 style="margin:0;font-size:16px">${dict.points_per_day_title || dict.chart_daily || 'Points per day'}</h2></div>`];
+        for(const day of limit){
+          const items = map.get(day);
+          const total = items.reduce((s,p)=> s + Number(p.delta||0), 0);
+          const label = formatDateLabel(day, tz, locale);
+          html.push(`
+            <details>
+              <summary>
+                <span class="chev">▶</span>
+                <strong>${label}</strong>
+                <span class="pill mono" style="margin-left:auto">${total>=0?'+':''}${total}</span>
+              </summary>
+              <div style="margin-top:8px">
+                ${items.map(p=>{
+                  const t = new Date(p.timestamp);
+                  const time = new Intl.DateTimeFormat(locale, { timeZone: tz, hour:'2-digit', minute:'2-digit' }).format(t);
+                  const d = Number(p.delta||0);
+                  const cls = d>=0?'deltaPlus':'deltaMinus';
+                  const desc = (p.description||'').replace(/</g,'&lt;');
+                  return `<div class="row" style="justify-content:space-between">
+                    <span>${time}</span>
+                    <span class="mono ${cls}">${d>=0?'+':''}${d}</span>
+                    <span class="muted" style="flex:1; margin-left:8px; text-align:right">${desc}</span>
+                  </div>`;
+                }).join('')}
+              </div>
+            </details>
+          `);
+        }
+        container.innerHTML = html.join('');
+        container.style.display='block';
+      }
+
+    function showLoading(phase, pct){
+      const ov = document.getElementById('loadingOverlay');
+      ov.style.display='flex';
+      if(phase) document.getElementById('loadingPhase').textContent = phase;
+      if(pct!==undefined){
+        document.getElementById('loadingBar').style.width = Math.min(100,Math.max(0,pct))+'%';
+      } else {
+        // simple pulse animation fallback
+        const bar = document.getElementById('loadingBar');
+        bar.style.transition='none';
+        let w = 5;
+        clearInterval(showLoading._int);
+        showLoading._int = setInterval(()=>{ w = (w+7)%100; bar.style.width = w+'%'; }, 350);
+      }
+    }
+    function hideLoading(){
+      const ov = document.getElementById('loadingOverlay');
+      ov.style.display='none';
+      if(showLoading._int) clearInterval(showLoading._int);
+    }
+    async function load(){
+        try{
+          showLoading('Fetching', 10);
+          const dataPromise = apiGet('getAll');
+          // Simulate staged progress while waiting
+          let pct = 10;
+          const progInt = setInterval(()=>{ pct = Math.min(90, pct+5); showLoading('Fetching', pct); }, 250);
+          const data = await dataPromise;
+          clearInterval(progInt);
+          showLoading('Rendering', 92);
+          const pts = (data.points||[]).slice().sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+          const total = pts.reduce((s,p)=> s + Number(p.delta||0), 0);
+          $('#total').textContent = num(total);
+          $('#lastUpdate').textContent = new Date().toLocaleString();
+      renderCumulative(pts);
+      renderChart(pts);
+          renderGoals(data.goals||[], total);
+          renderDailyTasks(data.dailyTasks||[]);
+          renderOutstanding(data.outstandingTasks||[]);
+          renderDailyBreakdown(pts);
+          $('#content').style.display='grid';
+          showLoading('Done',100);
+          setTimeout(hideLoading, 300);
+        }catch(err){
+          console.error(err);
+          $('#content').style.display='none';
+          $('#configHint').style.display='block';
+          hideLoading();
+        }
+      }
+
+      // events
+      document.addEventListener('DOMContentLoaded', () => {
+        applyI18n();
+  $('#lang').addEventListener('change', e => { setLang(e.target.value); load(); });
+  populateTimezones();
+  $('#tz').addEventListener('change', e => { storage.tz = e.target.value; load(); });
+        $('#openSettings').addEventListener('click', () => {
+          const box = $('#configHint');
+          const shown = box.style.display !== 'none';
+          if(shown){ box.style.display='none'; }
+          else { box.style.display='block'; $('#apiUrlInput').value = storage.api; }
+        });
+        $('#saveApiUrl').addEventListener('click', () => {
+          const url = $('#apiUrlInput').value.trim();
+          storage.api = url;
+          if(url){ $('#configHint').style.display='none'; load(); }
+        });
+        $('#refresh').addEventListener('click', load);
+        // init
+        if(storage.api){
+          $('#configHint').style.display='none';
+          load();
+        }else{
+          $('#configHint').style.display='block';
+        }
+      });
+    </script>
+  </body>
+  </html>
+<!-- Deployed commit a62b5fd8a503b99dba22a4aa5fbd317076d06db1 -->
