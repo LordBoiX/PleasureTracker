@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pleasure Princess Tracker</title>
+    <style>
+      :root{
+        --bg:#0f172a; /* slate-900 */
+        --panel:#111827; /* gray-900 */
+        --muted:#94a3b8; /* slate-400 */
+        --text:#e5e7eb;  /* gray-200 */
+        --accent:#38bdf8; /* sky-400 */
+        --good:#22c55e; /* green-500 */
+        --warn:#f59e0b; /* amber-500 */
+        --bad:#ef4444; /* red-500 */
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji","Segoe UI Emoji"}
+      .container{max-width:980px;margin:0 auto;padding:20px}
+      header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+      .title{font-weight:700;letter-spacing:.2px}
+      .muted{color:var(--muted)}
+      .panel{background:var(--panel);border:1px solid #1f2937;border-radius:12px;padding:16px}
+      .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:900px){.grid{grid-template-columns:1fr}}
+      button,select,input,textarea{background:#0b1220;border:1px solid #253049;color:var(--text);border-radius:8px;padding:8px 10px}
+      button{background:#0ea5e9;border-color:#0ea5e9;color:#00243b;cursor:pointer}
+      button.ghost{background:transparent;border-color:#253049;color:var(--text)}
+      .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .right{margin-left:auto}
+      .progress{height:10px;background:#0b1220;border:1px solid #253049;border-radius:999px;overflow:hidden}
+      .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#34d399)}
+      .goal{display:flex;gap:12px;align-items:center}
+      .goal h3{margin:0;font-size:15px}
+      .goal small{color:var(--muted)}
+      .badge{padding:2px 8px;border-radius:999px;border:1px solid #233049;color:#8fb3ff;font-size:12px}
+      .danger{color:#ff9b9b;border-color:#3b1f23}
+      .ok{color:#9bffb1;border-color:#1f3b2a}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+      .settings{display:flex;gap:8px;align-items:center}
+      .hint{padding:10px;border:1px dashed #334155;border-radius:10px}
+      .footer{margin-top:18px;color:var(--muted);font-size:12px}
+      .lang{min-width:110px}
+      @media(max-width:600px){
+        .toolbar .lang, .toolbar button, #apiUrlInput{width:100%}
+      }
+      .pill{background:#0b1220;border:1px solid #253049;border-radius:999px;padding:6px 10px}
+      .list{display:flex;flex-direction:column;gap:12px}
+      .kv{display:grid;grid-template-columns:1fr auto;gap:6px}
+      .total{font-size:28px;font-weight:700}
+      a{color:var(--accent)}
+  .chartWrap{position:relative;width:100%;height:220px}
+  @media(max-width:600px){.chartWrap{height:160px}}
+  .chartWrap canvas{width:100% !important;height:100% !important;display:block}
+  details{background:var(--panel);border:1px solid #1f2937;border-radius:10px;padding:8px}
+  summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+  summary::-webkit-details-marker{display:none}
+  .chev{transition:transform .2s ease}
+  details[open] .chev{transform:rotate(90deg)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  .deltaPlus{color:#22c55e}
+  .deltaMinus{color:#ef4444}
+  /* Large mood emoji styling */
+  .moodIcon{font-size:40px;line-height:1;display:inline-block;margin:0 4px;vertical-align:middle;}
+  /* Streak display */
+  .streakBox{display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap;margin:10px 0}
+  .streakCard{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1px solid #334155;border-radius:14px;padding:14px 20px;text-align:center;min-width:120px;transition:transform .2s ease,box-shadow .2s ease}
+  .streakCard:hover{transform:translateY(-2px);box-shadow:0 8px 24px -8px rgba(56,189,248,0.25)}
+  .streakCard .num{font-size:32px;font-weight:800;background:linear-gradient(90deg,#38bdf8,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .streakCard .lbl{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .streakFire{font-size:28px;animation:firePulse 1.2s ease-in-out infinite}
+  @keyframes firePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  /* Fun daily task grid */
+  .taskGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px;margin-top:10px}
+  .taskCell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:18px;cursor:default;transition:transform .15s ease,box-shadow .15s ease;position:relative}
+  .taskCell:hover{transform:scale(1.15);z-index:2}
+  .taskCell.val0{background:linear-gradient(135deg,#7f1d1d 0%,#450a0a 100%);box-shadow:inset 0 0 8px rgba(239,68,68,0.3)}
+  .taskCell.val1{background:linear-gradient(135deg,#065f46 0%,#022c22 100%);box-shadow:inset 0 0 8px rgba(34,197,94,0.3)}
+  .taskCell.val2{background:linear-gradient(135deg,#854d0e 0%,#422006 100%);box-shadow:inset 0 0 8px rgba(234,179,8,0.3)}
+  .taskCell.val3{background:linear-gradient(135deg,#6b21a8 0%,#3b0764 100%);box-shadow:inset 0 0 8px rgba(168,85,247,0.4)}
+  .taskCell.future{background:#1e293b;opacity:0.4}
+  .taskCell.today{box-shadow:0 0 0 2px #38bdf8,0 0 12px rgba(56,189,248,0.4);animation:todayPulse 2s ease-in-out infinite}
+  @keyframes todayPulse{0%,100%{box-shadow:0 0 0 2px #38bdf8,0 0 12px rgba(56,189,248,0.4)}50%{box-shadow:0 0 0 3px #38bdf8,0 0 20px rgba(56,189,248,0.6)}}
+  .taskLegend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:#94a3b8}
+  .taskLegend span{display:flex;align-items:center;gap:4px}
+  .legendDot{width:12px;height:12px;border-radius:4px}
+  /* Motivational banner */
+  .motivBanner{background:linear-gradient(90deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);border-radius:12px;padding:12px 18px;margin-bottom:12px;text-align:center;font-weight:600;font-size:15px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.2)}
+    </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div id="loadingOverlay" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,0.92);z-index:9999;flex-direction:column;gap:14px">
+        <div style="font-size:18px;font-weight:600">Loading…</div>
+        <div style="width:240px" class="progress"><span id="loadingBar" style="width:5%"></span></div>
+        <div class="muted" id="loadingPhase" style="font-size:12px;letter-spacing:.5px">Starting</div>
+      </div>
+      <header>
+        <div class="row">
+          <div class="title">🏁 <span data-i18n="app_title">Pleasure Princess Tracker</span></div>
+          <span class="muted">·</span>
+          <span class="muted" data-i18n="app_tag">Minimal goals + points</span>
+        </div>
+        <div class="toolbar">
+          <select id="lang" class="lang" title="Language"></select>
+          <select id="tz" class="lang" title="Timezone"></select>
+          <button class="ghost" id="openSettings">⚙️ <span data-i18n="settings">Settings</span></button>
+          <button id="refresh">↻ <span data-i18n="refresh">Refresh</span></button>
+        </div>
+      </header>
+
+      <div id="configHint" class="panel hint" style="display:none">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <strong>API URL</strong>
+          <input id="apiUrlInput" placeholder="Paste your Apps Script Web App URL" style="min-width:320px" />
+          <button id="saveApiUrl">Save</button>
+          <span class="muted" data-i18n="config_hint">Set your Google Apps Script Web App URL to load data.</span>
+        </div>
+      </div>
+
+  <section class="panel" id="dailyTasksSection" style="margin-top:10px"></section>
+
+      <div class="grid" id="content" style="display:none">
+        <section class="panel">
+          <div class="row">
+            <div>
+              <div class="muted" data-i18n="total_points">Total Points</div>
+              <div id="total" class="total">0</div>
+            </div>
+            <span class="right"></span>
+            <div class="kv">
+              <span class="muted" data-i18n="last_update">Last update</span>
+              <span id="lastUpdate">—</span>
+            </div>
+          </div>
+          <div style="margin-top:10px; display:flex; flex-direction:column; gap:14px">
+            <div>
+              <div class="muted" style="margin:0 0 4px 0" data-i18n="chart_cumulative">Cumulative points</div>
+              <div class="chartWrap"><canvas id="cumChart"></canvas></div>
+            </div>
+            <div>
+              <div class="muted" style="margin:0 0 4px 0" data-i18n="chart_daily">Points per day</div>
+              <div class="chartWrap"><canvas id="chart"></canvas></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="row">
+            <h2 style="margin:0;font-size:16px" data-i18n="goals">Goals</h2>
+            <span class="badge right" id="goalsCount">0</span>
+          </div>
+          <div class="list" id="goalsList"></div>
+        </section>
+      </div>
+
+  <section class="panel" id="dailyBreakdown" style="display:none; margin-top:16px"></section>
+
+  <div class="footer muted" id="footerNote" data-i18n="footer_note">Data lives in your Google Sheet.</div>
+    </div>
+
+    <script>
+      // --- Simple i18n ---
+      const I18N = {
+        en: {
+          app_title: 'Pleasure Princess Tracker',
+          app_tag: 'Minimal goals + points',
+          settings: 'Settings',
+          refresh: 'Refresh',
+          config_hint: 'Set your Google Apps Script Web App URL to load data.',
+          total_points: 'Total Points',
+          last_update: 'Last update',
+          goals: 'Goals',
+          footer_note: 'Data lives in your Google Sheet.',
+          achieved: 'Achieved',
+          progress: 'Progress',
+          missing_api: 'Missing API URL. Open Settings to configure.',
+          tz_label: 'Timezone',
+          tasks: 'Daily tasks',
+          today: 'Today',
+          statuses: {0:'Failed',1:'Done',2:'Great',3:'Outstanding'}
+          ,chart_cumulative: 'Cumulative points'
+          ,chart_daily: 'Points per day'
+          ,tasks_month: 'Daily tasks (to keep Duolingo)'
+          ,points_per_day_title: 'Points per day'
+          ,month_note: 'Showing current month'
+          ,zero_days_label: '0-days'
+          ,missed_days: 'Missed days:'
+          ,outstanding_tasks: 'Outstanding tasks'
+          ,due: 'Due'
+          ,due_today: 'Today'
+          ,overdue: 'Overdue'
+          ,days_left: 'days left'
+          ,completed: 'Completed'
+          ,current_streak: 'Current streak'
+          ,longest_streak: 'Best streak'
+          ,days: 'days'
+          ,perfect_month: 'Perfect month so far!'
+          ,keep_going: 'Keep it up!'
+          ,almost_record: 'Almost your record!'
+          ,new_record: 'New record! 🎉'
+        },
+        de: {
+          app_title: 'Pleasure Princess Tracker',
+          app_tag: 'Minimalistische Ziele + Punkte',
+          settings: 'Einstellungen',
+          refresh: 'Aktualisieren',
+          config_hint: 'Hinterlege die Google Apps Script Web-App-URL, um Daten zu laden.',
+          total_points: 'Gesamtpunkte',
+          last_update: 'Zuletzt aktualisiert',
+          goals: 'Ziele',
+          footer_note: 'Daten liegen in deinem Google Sheet.',
+          achieved: 'Erreicht',
+          progress: 'Fortschritt',
+          missing_api: 'API-URL fehlt. Öffne Einstellungen zur Konfiguration.',
+          tz_label: 'Zeitzone',
+          tasks: 'Tägliche Aufgaben',
+          today: 'Heute',
+          statuses: {0:'Fehlgeschlagen',1:'Erledigt',2:'Großartig',3:'Hervorragend'}
+          ,chart_cumulative: 'Kumulative Punkte'
+          ,chart_daily: 'Punkte pro Tag'
+          ,tasks_month: 'Tägliche Aufgaben (für Duolingo)'
+          ,points_per_day_title: 'Punkte pro Tag'
+          ,month_note: 'Aktueller Monat'
+          ,zero_days_label: '0-Tage'
+          ,missed_days: 'Verpasste Tage:'
+          ,outstanding_tasks: 'Offene Aufgaben'
+          ,due: 'Fällig'
+          ,due_today: 'Heute'
+          ,overdue: 'Überfällig'
+          ,days_left: 'Tage übrig'
+          ,completed: 'Erledigt'
+          ,current_streak: 'Aktuelle Serie'
+          ,longest_streak: 'Beste Serie'
+          ,days: 'Tage'
+          ,perfect_month: 'Perfekter Monat bisher!'
+          ,keep_going: 'Weiter so!'
+          ,almost_record: 'Fast dein Rekord!'
+          ,new_record: 'Neuer Rekord! 🎉'
+        },
+        ru: {
+          app_title: 'Pleasure Princess Tracker',
+          app_tag: 'Минимальные цели и очки',
+          settings: 'Настройки',
+          refresh: 'Обновить',
+          config_hint: 'Укажите URL веб‑приложения Apps Script, чтобы загрузить данные.',
+          total_points: 'Всего очков',
+          last_update: 'Последнее обновление',
+          goals: 'Цели',
+          footer_note: 'Данные хранятся в вашей Google Таблице.',
+          achieved: 'Достигнуто',
+          progress: 'Прогресс',
+          missing_api: 'Не указан URL API. Откройте настройки для конфигурации.',
+          tz_label: 'Часовой пояс',
+          tasks: 'Ежедневные задачи',
+          today: 'Сегодня',
+          statuses: {0:'Провал',1:'Сделано',2:'Отлично',3:'Превосходно'}
+          ,chart_cumulative: 'Накопленные очки'
+          ,chart_daily: 'Очки в день'
+          ,tasks_month: 'Ежедневные задачи (для Duolingo)'
+          ,points_per_day_title: 'Очки в день'
+          ,month_note: 'Текущий месяц'
+          ,zero_days_label: '0-дней'
+          ,missed_days: 'Пропущенные дни:'
+          ,outstanding_tasks: 'Текущие задачи'
+          ,due: 'Срок'
+          ,due_today: 'Сегодня'
+          ,overdue: 'Просрочено'
+          ,days_left: 'дн. осталось'
+          ,completed: 'Готово'
+          ,current_streak: 'Текущая серия'
+          ,longest_streak: 'Лучшая серия'
+          ,days: 'дней'
+          ,perfect_month: 'Идеальный месяц!'
+          ,keep_going: 'Так держать!'
+          ,almost_record: 'Почти рекорд!'
+          ,new_record: 'Новый рекорд! 🎉'
+        }
+      };
+
+      const $ = sel => document.querySelector(sel);
+      const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwp7MrqQU3dUFDvJd107Hsh9cU1ySQexmuDpYMePr4bkUUa7aBdU2RPvWpn7t2YFOiv/exec'; // TODO: set to your Apps Script URL
+      const storage = {
+        get api(){
+          const qs = new URLSearchParams(location.search);
+          const fromQs = qs.get('api');
+          if(fromQs) return fromQs;
+      const saved = localStorage.getItem('apiBaseUrl');
+      if(saved) return saved;
+      // Only use DEFAULT_API when it's not the placeholder
+      return (DEFAULT_API && !/REPLACE_WITH_YOUR_DEPLOYMENT/.test(DEFAULT_API)) ? DEFAULT_API : ''
+        },
+        set api(v){ localStorage.setItem('apiBaseUrl', v || '') },
+  get lang(){ return localStorage.getItem('lang') || 'ru' },
+        set lang(v){ localStorage.setItem('lang', v) },
+        get tz(){ return localStorage.getItem('tz') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' },
+        set tz(v){ localStorage.setItem('tz', v) }
+      };
+
+      function setLang(lang){
+        storage.lang = I18N[lang] ? lang : 'en';
+        applyI18n();
+      }
+      function applyI18n(){
+        const dict = I18N[storage.lang] || I18N.en;
+        try{ document.documentElement.setAttribute('lang', storage.lang); }catch(_){ }
+        $$('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (dict[key]) el.textContent = dict[key];
+        });
+        const sel = $('#lang');
+        if (sel.childElementCount === 0){
+          Object.keys(I18N).forEach(k => {
+            const opt = document.createElement('option');
+            const labels = {en:'English', de:'Deutsch', ru:'Русский'};
+            opt.value = k; opt.textContent = labels[k] || k.toUpperCase();
+            sel.appendChild(opt);
+          });
+        }
+        sel.value = storage.lang;
+      }
+
+      function populateTimezones(){
+        const tzSel = $('#tz');
+        if(tzSel.childElementCount>0) return;
+        let zones = [];
+        try{ zones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : []; }catch(_){ zones = []; }
+        if(zones.length === 0){ zones = [storage.tz]; }
+        zones.forEach(z => {
+          const opt = document.createElement('option');
+          opt.value = z; opt.textContent = z;
+          tzSel.appendChild(opt);
+        });
+        tzSel.value = storage.tz;
+      }
+      async function apiGet(action){
+        if(!storage.api) throw new Error(I18N[storage.lang]?.missing_api || 'Missing API URL');
+        const url = storage.api + (storage.api.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action);
+        const res = await fetch(url, { method:'GET' });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }
+
+  let chart; let cumChart;
+      
+      // Performance: Cache Intl.DateTimeFormat instances (expensive to create)
+      const _fmtCache = new Map();
+      function getCachedFormatter(locale, tz, options){
+        const key = `${locale}|${tz}|${JSON.stringify(options)}`;
+        if(!_fmtCache.has(key)){
+          _fmtCache.set(key, new Intl.DateTimeFormat(locale, { timeZone: tz, ...options }));
+        }
+        return _fmtCache.get(key);
+      }
+      
+      // Performance: Decimate data for large datasets
+      function decimateData(labels, values, maxPoints = 90) {
+        const len = labels.length;
+        if (len <= maxPoints) return { labels, values };
+        const step = Math.ceil(len / maxPoints);
+        const newLabels = new Array(Math.ceil(len / step));
+        const newValues = new Array(newLabels.length);
+        let idx = 0;
+        for (let i = 0; i < len; i += step) {
+          let sum = 0;
+          const end = Math.min(i + step, len);
+          for (let j = i; j < end; j++) sum += values[j];
+          newLabels[idx] = labels[i];
+          newValues[idx] = end - i > 1 ? Math.round(sum / (end - i) * 10) / 10 : values[i];
+          idx++;
+        }
+        return { labels: newLabels, values: newValues };
+      }
+      
+      // Performance: Cache date key conversions
+      const _dateKeyCache = new Map();
+      function dateKeyInTZ(ts, tz){
+        const cacheKey = `${ts}|${tz}`;
+        if(_dateKeyCache.has(cacheKey)) return _dateKeyCache.get(cacheKey);
+        const fmt = getCachedFormatter('en-CA', tz, { year:'numeric', month:'2-digit', day:'2-digit' });
+        const result = fmt.format(new Date(ts));
+        _dateKeyCache.set(cacheKey, result);
+        return result;
+      }
+      
+      // Performance: Cache formatted date labels
+      const _labelCache = new Map();
+      function formatDateLabel(isoDate, tz, locale){
+        const cacheKey = `${isoDate}|${tz}|${locale}`;
+        if(_labelCache.has(cacheKey)) return _labelCache.get(cacheKey);
+        const [y,m,d] = isoDate.split('-').map(Number);
+        const dt = new Date(Date.UTC(y, m-1, d, 12, 0, 0));
+        const fmt = getCachedFormatter(locale || 'en', tz, { month:'short', day:'2-digit' });
+        const result = fmt.format(dt);
+        _labelCache.set(cacheKey, result);
+        return result;
+      }
+      function buildDaily(points, tz){
+        const len = points.length;
+        if(len===0) return { labels:[], values:[] };
+        const map = Object.create(null);
+        for(let i = 0; i < len; i++){
+          const p = points[i];
+          const key = dateKeyInTZ(p.timestamp, tz);
+          map[key] = (map[key]||0) + Number(p.delta||0);
+        }
+        // Get sorted keys
+        const keys = Object.keys(map).sort();
+        const start = new Date(keys[0]+"T00:00:00Z").getTime();
+        const end = new Date(keys[keys.length-1]+"T00:00:00Z").getTime();
+        const dayMs = 86400000;
+        const dayCount = Math.round((end - start) / dayMs) + 1;
+        const labels = new Array(dayCount);
+        const values = new Array(dayCount);
+        // Use cached UTC formatter
+        const utcFmt = getCachedFormatter('en-CA', 'UTC', { year:'numeric', month:'2-digit', day:'2-digit' });
+        for(let i = 0; i < dayCount; i++){
+          const iso = utcFmt.format(new Date(start + i * dayMs));
+          labels[i] = iso;
+          values[i] = map[iso] || 0;
+        }
+        return { labels, values };
+      }
+      function trendline(values){
+        const n = values.length; if(n===0) return [];
+        const xs = values.map((_,i)=>i);
+        const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+        const xbar = mean(xs); const ybar = mean(values);
+        let num=0, den=0; for(let i=0;i<n;i++){ num += (xs[i]-xbar)*(values[i]-ybar); den += (xs[i]-xbar)*(xs[i]-xbar); }
+        const m = den ? num/den : 0; const b = ybar - m*xbar;
+        return xs.map(x => m*x + b);
+      }
+      function renderChart(points){
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        let { labels, values } = buildDaily(points, tz);
+        // Performance: Decimate if too many points
+        const decimated = decimateData(labels, values, 90);
+        labels = decimated.labels; values = decimated.values;
+        const tr = trendline(values);
+        const ctx = document.getElementById('chart');
+        if(chart){ chart.destroy(); }
+        chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { type:'bar', label:'Points/day', data: values, backgroundColor:'rgba(56,189,248,0.35)', borderColor:'#38bdf8', borderWidth: 1 },
+              { type:'line', label:'Trend', data: tr, borderColor:'#34d399', borderWidth:2, pointRadius:0, tension:0.2, fill:false }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 150 },
+            resizeDelay: 100,
+            scales: {
+              x: {
+                ticks: { 
+                  color:'#94a3b8', 
+                  maxRotation: 45,
+                  autoSkip: true,
+                  maxTicksLimit: 15,
+                  callback: (v, i) => formatDateLabel(labels[i], tz, locale) 
+                },
+                grid: { color:'#1f2937', display: false }
+              },
+              y: { ticks: { color:'#94a3b8' }, grid: { color:'#1f2937' } }
+            },
+            plugins: { 
+              legend: { labels: { color:'#94a3b8' } },
+              decimation: { enabled: true, algorithm: 'lttb' }
+            }
+          }
+        });
+      }
+
+      function renderCumulative(points, archivedBase){
+        archivedBase = archivedBase || 0;
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        // Sort once, avoid repeated Date creation
+        const sorted = points.slice().sort((a,b)=> new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        const len = sorted.length;
+        let acc = archivedBase; // Start from archived total
+        const labels = new Array(len);
+        const values = new Array(len);
+        // Use cached formatter
+        const dateFmt = getCachedFormatter('en-CA', tz, { year:'numeric', month:'2-digit', day:'2-digit' });
+        for(let i = 0; i < len; i++){
+          labels[i] = dateFmt.format(new Date(sorted[i].timestamp));
+          acc += Number(sorted[i].delta||0);
+          values[i] = acc;
+        }
+        // Performance: Decimate if too many points
+        const decimated = decimateData(labels, values, 120);
+        const finalLabels = decimated.labels;
+        const finalValues = decimated.values;
+        const ctx = document.getElementById('cumChart');
+        if(cumChart){ cumChart.destroy(); }
+        cumChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: finalLabels,
+            datasets: [{
+              label: 'Total',
+              data: finalValues,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139,92,246,0.2)',
+              fill: true,
+              tension: 0.25,
+              pointRadius: 0,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 150 },
+            resizeDelay: 100,
+            scales: {
+              x: {
+                ticks: { 
+                  color:'#94a3b8', 
+                  maxRotation: 45,
+                  autoSkip: true,
+                  maxTicksLimit: 12,
+                  callback: (v,i)=> formatDateLabel(finalLabels[i], tz, locale) 
+                },
+                grid: { color:'#1f2937', display: false }
+              },
+              y: { ticks: { color:'#94a3b8' }, grid: { color:'#1f2937' } }
+            },
+            plugins: { 
+              legend: { labels: { color:'#94a3b8' } },
+              decimation: { enabled: true, algorithm: 'lttb' }
+            }
+          }
+        });
+      }
+
+      function num(n){ return (Number(n)||0).toLocaleString(undefined); }
+
+      function renderGoals(goals, total){
+        const list = $('#goalsList');
+        list.innerHTML = '';
+        $('#goalsCount').textContent = goals.length;
+        goals
+          .slice()
+          .sort((a,b)=> Number(a.targetPoints)-Number(b.targetPoints))
+          .forEach(g => {
+            const target = Number(g.targetPoints)||0;
+            const pct = target ? Math.max(0, Math.min(100, Math.round(100* (total/target)))) : 0;
+            const achieved = total >= target && target>0;
+            const row = document.createElement('div');
+            row.className = 'goal';
+            row.innerHTML = `
+              <div style="flex:1;min-width:220px">
+                <h3>${g.title || 'Goal'}</h3>
+                <small class="muted">${g.description || ''}</small>
+                <div class="progress" style="margin-top:8px"><span style="width:${pct}%"></span></div>
+                <div class="row" style="margin-top:6px">
+                  <span class="muted" data-i18n="progress">${I18N[storage.lang]?.progress || 'Progress'}</span>
+                  <span class="badge">${num(Math.min(total, target))} / ${num(target)}</span>
+                  <span class="right badge ${achieved?'ok':'danger'}">${achieved ? (I18N[storage.lang]?.achieved||'Achieved') : (100-pct)+'%'}</span>
+                </div>
+              </div>
+            `;
+            list.appendChild(row);
+          });
+      }
+
+      function renderOutstanding(tasks){
+        // Unified outstanding renderer (normalizes dates, handles completed & badges)
+        let panel = document.getElementById('outstandingPanel');
+        if(!panel){
+          panel = document.createElement('section');
+          panel.className = 'panel';
+          panel.id = 'outstandingPanel';
+          const ref = document.getElementById('content');
+          ref.parentNode.insertBefore(panel, ref); // before main grid
+        }
+        const dict = I18N[storage.lang] || I18N.en;
+        const now = new Date();
+        // Use cached formatter
+        const dateFmt = getCachedFormatter('en-CA', storage.tz, { year:'numeric', month:'2-digit', day:'2-digit'});
+        const todayKey = dateFmt.format(now);
+        const norm = (v)=>{
+          if(!v) return '';
+          if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v)) return v;
+          const d = new Date(v);
+          if(!isNaN(d.getTime())) return dateFmt.format(d);
+          return '';
+        };
+        // Normalize all dueDates in-place (does not mutate original array objects from backend beyond dueDate)
+        const taskLen = (tasks||[]).length;
+        for(let i = 0; i < taskLen; i++){ tasks[i].dueDate = norm(tasks[i].dueDate); }
+        const sortedTasks = (tasks||[]).slice().sort((a,b)=>{
+          // Incomplete first
+          if((a.completed?1:0)!==(b.completed?1:0)) return (a.completed?1:0)-(b.completed?1:0);
+          if(!a.dueDate && !b.dueDate) return a.title.localeCompare(b.title);
+          if(!a.dueDate) return 1;
+          if(!b.dueDate) return -1;
+          return a.dueDate.localeCompare(b.dueDate);
+        });
+        const rows = new Array(sortedTasks.length);
+        for(let i = 0; i < sortedTasks.length; i++){
+          const t = sortedTasks[i];
+          const due = t.dueDate || '';
+          let badge = '';
+          if(due){
+            if(due === todayKey){
+              badge = `<span class="badge" style="background:#1e293b;color:#fbbf24;border-color:#334155">${dict.due_today||'Today'}</span>`;
+            } else if(due < todayKey){
+              badge = `<span class="badge danger" style="border-color:#3b1f23">${dict.overdue||'Overdue'}</span>`;
+            } else {
+              const [y,m,d] = due.split('-').map(Number);
+              if(!isNaN(y) && !isNaN(m) && !isNaN(d)){
+                const dueDate = new Date(Date.UTC(y, m-1, d, 12));
+                const daysRaw = (dueDate - now)/86400000;
+                const daysLeft = Math.max(0, Math.ceil(daysRaw));
+                badge = `<span class="badge" style="background:#1e293b;border-color:#334155">${daysLeft} ${(dict.days_left||'days left')}</span>`;
+              }
+            }
+          }
+          const desc = (t.description||'').replace(/</g,'&lt;');
+          const completed = !!t.completed;
+          const titleStyle = completed ? 'text-decoration:line-through;color:#9ca3af' : '';
+          const compBadge = completed ? `<span class="badge ok" style="margin-left:6px; background:#064e3b;color:#a7f3d0;border-color:#065f46">${dict.completed||'Completed'} ✨</span>` : '';
+          rows[i] = `<div class="goal" style="align-items:flex-start">
+            <div style="flex:1;min-width:220px">
+              <h3 style="margin:0 0 4px 0;font-size:15px;${titleStyle}">${t.title || '—'} ${badge} ${compBadge}</h3>
+              <small class="muted">${desc}</small>
+              ${due?`<div class="muted" style="margin-top:4px;font-size:12px">${dict.due||'Due'}: ${due}</div>`:''}
+            </div>
+          </div>`;
+        }
+        panel.innerHTML = `
+          <div class="row"><h2 style="margin:0;font-size:16px">${dict.outstanding_tasks||'Outstanding tasks'}</h2><span class="badge right">${tasks?tasks.length:0}</span></div>
+          <div class="list" style="margin-top:8px">${rows.join('') || '<span class="muted">—</span>'}</div>
+        `;
+      }
+
+      function renderDailyTasks(tasks, summary){
+        summary = summary || {};
+        // Performance: use DocumentFragment and minimize DOM operations
+        let sect = document.getElementById('dailyTasksSection');
+        if(!sect){
+          sect = document.createElement('section');
+          sect.className = 'panel';
+          sect.id = 'dailyTasksSection';
+          const grid = document.getElementById('content');
+          grid.parentNode.insertBefore(sect, grid);
+        }
+        const dict = I18N[storage.lang] || I18N.en;
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        
+        // Normalize dates efficiently with caching
+        const normalize = (s)=>{
+          if(!s) return '';
+          const str = String(s).trim();
+          const m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+          if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+          const d = new Date(str);
+          if(!isNaN(d.getTime())){
+            return getCachedFormatter('en-CA', tz, { year:'numeric', month:'2-digit', day:'2-digit' }).format(d);
+          }
+          return str;
+        };
+        
+        // Build lookup map using for-loop instead of forEach
+        const byDate = Object.create(null);
+        const descByDate = Object.create(null);
+        const taskLen = (tasks||[]).length;
+        for(let i = 0; i < taskLen; i++){
+          const t = tasks[i];
+          const key = normalize(t.date);
+          byDate[key] = Number(t.value||0);
+          if(t.description) descByDate[key] = t.description;
+        }
+        
+        // Get current month days using cached formatter
+        const now = new Date();
+        const fmtTZ = getCachedFormatter('en-CA', tz, { year:'numeric', month:'2-digit', day:'2-digit' });
+        const [yStr,mStr,dStr] = fmtTZ.format(now).split('-');
+        const y = Number(yStr), m = Number(mStr), dNow = Number(dStr);
+        const todayKey = `${y}-${String(m).padStart(2,'0')}-${String(dNow).padStart(2,'0')}`;
+        const daysInMonth = new Date(y, m, 0).getDate();
+        
+        const days = [];
+        for(let d=1; d<=daysInMonth; d++){
+          const iso = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const v = byDate[iso];
+          const isFuture = d > dNow;
+          days.push({ iso, v, isFuture, isToday: iso === todayKey });
+        }
+        
+        // Calculate streaks from current data
+        const allDates = Object.keys(byDate).sort();
+        let currentStreak = 0;
+        let longestStreakInData = 0;
+        let tempStreak = 0;
+        
+        // Calculate longest streak in current data
+        for(let i=0; i<allDates.length; i++){
+          const v = byDate[allDates[i]];
+          if(v && v > 0){
+            tempStreak++;
+            longestStreakInData = Math.max(longestStreakInData, tempStreak);
+          } else {
+            tempStreak = 0;
+          }
+        }
+        
+        // Use backend's longest streak ever (includes archived data)
+        const longestStreakEver = Number(summary.longestStreakEver || 0);
+        const longestStreak = Math.max(longestStreakInData, longestStreakEver);
+        
+        // Calculate current streak (from today backwards)
+        const sortedDesc = allDates.slice().reverse();
+        for(const dt of sortedDesc){
+          const v = byDate[dt];
+          if(v && v > 0){
+            currentStreak++;
+          } else if(dt <= todayKey){
+            break; // Stop at first zero that's not in the future
+          }
+        }
+        
+        // Missed days this month (only past/today, value == 0)
+        const MISSES_LIMIT = 6;
+        let zeroDays = 0, successDays = 0;
+        for(let i = 0; i < days.length; i++){
+          const d = days[i];
+          if(!d.isFuture){
+            const v = byDate[d.iso];
+            if(v === 0) zeroDays++;
+            else if(v > 0) successDays++;
+          }
+        }
+        
+        // Mood based on misses
+        const mood = (z)=>{
+          if(z<=0) return '😇';
+          if(z===1) return '😊';
+          if(z===2) return '🙂';
+          if(z===3) return '🙁';
+          if(z===4) return '😟';
+          if(z===5) return '😫';
+          if(z===6) return '😢';
+          if(z===7) return '😭';
+          return '💀';
+        };
+        
+        // Motivational message
+        let motivMsg = '';
+        if(zeroDays === 0 && successDays > 0) motivMsg = dict.perfect_month;
+        else if(currentStreak >= longestStreak && currentStreak > 1) motivMsg = dict.new_record;
+        else if(currentStreak >= longestStreak - 1 && currentStreak > 2) motivMsg = dict.almost_record;
+        else if(currentStreak >= 3) motivMsg = dict.keep_going;
+        
+        // Format day labels with tooltip using cached formatter
+        const labelFmt = getCachedFormatter(locale, tz, { weekday:'short', month:'short', day:'2-digit' });
+        const fmtLabel = (iso)=>{
+          const parts = String(iso).split('-');
+          if(parts.length===3){
+            const [y,m,d] = parts.map(Number);
+            const dt = new Date(Date.UTC(y, (m-1), d, 12));
+            return labelFmt.format(dt);
+          }
+          return iso;
+          return iso;
+        };
+        
+        // Status icons
+        const icon = (v, isFuture)=>{
+          if(isFuture) return '·';
+          if(v===1) return '✅';
+          if(v===2) return '⭐';
+          if(v===3) return '✨';
+          if(v===0) return '❌';
+          return '·';
+        };
+        
+        // Build grid cells using array and join
+        const cellsArr = new Array(days.length);
+        for(let i = 0; i < days.length; i++){
+          const d = days[i];
+          let cls = 'taskCell';
+          if(d.isFuture) cls += ' future';
+          else if(d.v === 0) cls += ' val0';
+          else if(d.v === 1) cls += ' val1';
+          else if(d.v === 2) cls += ' val2';
+          else if(d.v === 3) cls += ' val3';
+          if(d.isToday) cls += ' today';
+          const desc = descByDate[d.iso] || '';
+          const tooltip = `${fmtLabel(d.iso)}${desc ? ' — ' + desc : ''}`;
+          cellsArr[i] = `<div class="${cls}" title="${tooltip.replace(/"/g,'&quot;')}">${icon(d.v, d.isFuture)}</div>`;
+        }
+        const cellsHtml = cellsArr.join('');
+        
+        // Streak cards
+        const streakHtml = `
+          <div class="streakBox">
+            <div class="streakCard">
+              <div class="num">${currentStreak} <span class="streakFire">${currentStreak >= 3 ? '🔥' : ''}</span></div>
+              <div class="lbl">${dict.current_streak}</div>
+            </div>
+            <div class="streakCard">
+              <div class="num">${longestStreak} 🏆</div>
+              <div class="lbl">${dict.longest_streak}</div>
+            </div>
+          </div>
+        `;
+        
+        // Motivational banner
+        const motivHtml = motivMsg ? `<div class="motivBanner">${motivMsg}</div>` : '';
+        
+        // Legend
+        const legendHtml = `
+          <div class="taskLegend">
+            <span><span class="legendDot" style="background:linear-gradient(135deg,#7f1d1d,#450a0a)"></span> ❌ 0</span>
+            <span><span class="legendDot" style="background:linear-gradient(135deg,#065f46,#022c22)"></span> ✅ 1</span>
+            <span><span class="legendDot" style="background:linear-gradient(135deg,#854d0e,#422006)"></span> ⭐ 2</span>
+            <span><span class="legendDot" style="background:linear-gradient(135deg,#6b21a8,#3b0764)"></span> ✨ 3</span>
+          </div>
+        `;
+        
+        sect.innerHTML = `
+          ${motivHtml}
+          <div class="row">
+            <h2 style="margin:0;font-size:16px">${dict.tasks_month || dict.tasks}</h2>
+            <span class="muted right" style="font-size:12px" title="${dict.missed_days||'Missed days:'}">${dict.missed_days} ${zeroDays} <span class="moodIcon" role="img" aria-label="mood">${mood(zeroDays)}</span>/${MISSES_LIMIT}</span>
+          </div>
+          ${streakHtml}
+          <div class="taskGrid">${cellsHtml}</div>
+          ${legendHtml}
+          <div class="muted" style="margin-top:6px;font-size:12px">${dict.month_note || ''}</div>
+        `;
+      }
+
+      function groupPointsByDay(points, tz){
+        const map = Object.create(null);
+        const len = points.length;
+        for(let i = 0; i < len; i++){
+          const p = points[i];
+          const k = dateKeyInTZ(p.timestamp, tz);
+          if(!map[k]) map[k] = [];
+          map[k].push(p);
+        }
+        // sort each day by time ascending
+        for(const k in map) map[k].sort((a,b)=> new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        return map;
+      }
+
+      function renderDailyBreakdown(points){
+        const tz = storage.tz; const locale = storage.lang || 'en';
+        const container = document.getElementById('dailyBreakdown');
+        const map = groupPointsByDay(points, tz);
+        const days = Object.keys(map).sort().reverse();
+        if(days.length === 0){ container.style.display='none'; return; }
+        // Performance: Show only last 7 days by default, with option to expand
+        const limit = days.slice(0, 7);
+        const hasMore = days.length > 7;
+        const dict = I18N[storage.lang] || I18N.en;
+        const timeFmt = getCachedFormatter(locale, tz, { hour:'2-digit', minute:'2-digit' });
+        const html = [`<div class="row"><h2 style="margin:0;font-size:16px">${dict.points_per_day_title || dict.chart_daily || 'Points per day'}</h2><span class="badge right">${days.length} ${dict.days || 'days'}</span></div>`];
+        for(const day of limit){
+          const items = map[day];
+          let total = 0;
+          for(let i = 0; i < items.length; i++) total += Number(items[i].delta||0);
+          const label = formatDateLabel(day, tz, locale);
+          // Performance: limit items shown per day
+          const displayItems = items.slice(0, 20);
+          const moreItems = items.length > 20 ? items.length - 20 : 0;
+          const itemRows = new Array(displayItems.length);
+          for(let i = 0; i < displayItems.length; i++){
+            const p = displayItems[i];
+            const t = new Date(p.timestamp);
+            const time = timeFmt.format(t);
+            const d = Number(p.delta||0);
+            const cls = d>=0?'deltaPlus':'deltaMinus';
+            const desc = (p.description||'').replace(/</g,'&lt;');
+            itemRows[i] = `<div class="row" style="justify-content:space-between">
+              <span>${time}</span>
+              <span class="mono ${cls}">${d>=0?'+':''}${d}</span>
+              <span class="muted" style="flex:1; margin-left:8px; text-align:right">${desc}</span>
+            </div>`;
+          }
+          html.push(`
+            <details>
+              <summary>
+                <span class="chev">▶</span>
+                <strong>${label}</strong>
+                <span class="pill mono" style="margin-left:auto">${total>=0?'+':''}${total}</span>
+              </summary>
+              <div style="margin-top:8px">
+                ${itemRows.join('')}
+                ${moreItems ? `<div class="muted" style="text-align:center;margin-top:6px">+${moreItems} more entries</div>` : ''}
+              </div>
+            </details>
+          `);
+        }
+        if(hasMore){
+          html.push(`<div class="muted" style="text-align:center;margin-top:8px;font-size:12px">Showing last 7 days of ${days.length} total</div>`);
+        }
+        container.innerHTML = html.join('');
+        container.style.display='block';
+      }
+
+    function showLoading(phase, pct){
+      const ov = document.getElementById('loadingOverlay');
+      ov.style.display='flex';
+      if(phase) document.getElementById('loadingPhase').textContent = phase;
+      if(pct!==undefined){
+        document.getElementById('loadingBar').style.width = Math.min(100,Math.max(0,pct))+'%';
+      } else {
+        // simple pulse animation fallback
+        const bar = document.getElementById('loadingBar');
+        bar.style.transition='none';
+        let w = 5;
+        clearInterval(showLoading._int);
+        showLoading._int = setInterval(()=>{ w = (w+7)%100; bar.style.width = w+'%'; }, 350);
+      }
+    }
+    function hideLoading(){
+      const ov = document.getElementById('loadingOverlay');
+      ov.style.display='none';
+      if(showLoading._int) clearInterval(showLoading._int);
+    }
+    async function load(){
+        try{
+          showLoading('Fetching', 10);
+          const dataPromise = apiGet('getAll');
+          // Simulate staged progress while waiting
+          let pct = 10;
+          const progInt = setInterval(()=>{ pct = Math.min(90, pct+5); showLoading('Fetching', pct); }, 250);
+          const data = await dataPromise;
+          clearInterval(progInt);
+          showLoading('Rendering', 92);
+          
+          // Extract summary from backend (includes archived totals)
+          const summary = data.summary || {};
+          const archivedPointsTotal = Number(summary.archivedPointsTotal || 0);
+          const longestStreakEver = Number(summary.longestStreakEver || 0);
+          
+          const pts = (data.points||[]).slice().sort((a,b)=> new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          let currentPointsTotal = 0;
+          for(let i = 0; i < pts.length; i++) currentPointsTotal += Number(pts[i].delta||0);
+          const total = archivedPointsTotal + currentPointsTotal;
+          
+          $('#total').textContent = num(total);
+          $('#lastUpdate').textContent = new Date().toLocaleString();
+          
+          // Pass summary to charts/renderers
+          renderCumulative(pts, archivedPointsTotal);
+          renderChart(pts);
+          renderGoals(data.goals||[], total);
+          renderDailyTasks(data.dailyTasks||[], summary);
+          renderOutstanding(data.outstandingTasks||[]);
+          renderDailyBreakdown(pts);
+          $('#content').style.display='grid';
+          showLoading('Done',100);
+          setTimeout(hideLoading, 300);
+        }catch(err){
+          console.error(err);
+          $('#content').style.display='none';
+          $('#configHint').style.display='block';
+          hideLoading();
+        }
+      }
+
+      // events
+      document.addEventListener('DOMContentLoaded', () => {
+        applyI18n();
+  $('#lang').addEventListener('change', e => { setLang(e.target.value); load(); });
+  populateTimezones();
+  $('#tz').addEventListener('change', e => { storage.tz = e.target.value; load(); });
+        $('#openSettings').addEventListener('click', () => {
+          const box = $('#configHint');
+          const shown = box.style.display !== 'none';
+          if(shown){ box.style.display='none'; }
+          else { box.style.display='block'; $('#apiUrlInput').value = storage.api; }
+        });
+        $('#saveApiUrl').addEventListener('click', () => {
+          const url = $('#apiUrlInput').value.trim();
+          storage.api = url;
+          if(url){ $('#configHint').style.display='none'; load(); }
+        });
+        $('#refresh').addEventListener('click', load);
+        // init
+        if(storage.api){
+          $('#configHint').style.display='none';
+          load();
+        }else{
+          $('#configHint').style.display='block';
+        }
+      });
+    </script>
+  </body>
+  </html>
+<!-- Deployed commit 5cdad99303f0692ba88db630f851f0453133f3eb -->
